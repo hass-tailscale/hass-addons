@@ -5,7 +5,7 @@ These add-ons are primarily used only by the author; as such, your individual mi
 
 ## Installing
 
-A user can add a repository by going to the Supervisor panel in Home Assistant, clicking on the store icon in the top right, copying/pasting the URL of your repository into the repository text area, and clicking on Save.
+A user can add a repository by going to the Supervisor panel in Home Assistant, clicking the store icon in the top right, copying and pasting the repository URL into the repository text area, and clicking Save.
 
 See ["Create an add-on repository"](https://developers.home-assistant.io/docs/add-ons/repository/) for more information.
 

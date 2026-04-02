@@ -1,6 +1,7 @@
 # Home Assistant Add-on: Tailscale
 
-# Quick Installation
+## Quick Installation
+
 1. Open this [My Home Assistant Redirect Link](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fhass-tailscale%2Fhass-addons)
 2. Enter your Home Assistant instance (if not already) and click “save.”
 3. You will get a warning: "Open page in your Home Assistant? You've been linked to the page that will show the add app repository dialog with a specific repository URL pre-filled."`
@@ -64,7 +65,7 @@ The value of this option is generated in the Tailscale Admin console under the *
 Two types of keys can be generated:
 
 * **One-off Key**: this key is valid to join one machine, and cannot be reused. This is the **Recommended** key to use when configuring this Add-on.
-* **Reusable Key**: This key can be used an unlimited number of times to connect an unlimited number of systems to your Tailscale account. It must be explicitly revoked to prevent its use. It is **strongly discouraged** you use this key when configuring the add-on, as compromise of the key could result in unauthorised devices being added to your Tailscale account.
+* **Reusable Key**: This key can be used an unlimited number of times to connect an unlimited number of systems to your Tailscale account. It must be explicitly revoked to prevent its use. It is **strongly discouraged** that you use this key when configuring the add-on, as compromising the key could result in unauthorized devices being added to your Tailscale account.
 
 If, for some reason, you must re-authenticate the add-on to your Tailscale account and you have used a **One-off Key** as recommended, you will need to generate a new key and update `auth_key` when enabling the `force_reauth` option (see below).
 
@@ -76,7 +77,7 @@ This value defaults to `homeassistant`.
 
 ### Option: `force_reauth` (optional)
 
-Setting this option to `true` will cause Tailscale to try to reauthenticate to the service when the container is started.
+Setting this option to `true` will cause Tailscale to attempt to reauthenticate with the service when the container starts.
 
 This should only be enabled if, for some reason, the add-on can no longer communicate with Tailscale. You will likely need to generate a new **One-off key** and update the `auth_key` option.
 
@@ -101,7 +102,7 @@ This value defaults to `false`.
 
 This option (if set) determines the UDP port that `tailscaled` listens on.
 
-It shouldn't be necessary to set this value, as a random port is chosen at startup, and UPNP/NAT-PMP should ensure it is appropriately accessible.
+It shouldn't be necessary to set this value, since a random port is chosen at startup and UPNP/NAT-PMP should ensure it is accessible.
 
 ### Option: `advertise_routes`
 
@@ -165,7 +166,7 @@ See [Server role accounts with ACL tags](https://tailscale.com/kb/1068/acl-tags/
 
 ### Option: `cert_domain`
 
-This option (if set) configures tailscale to provision TLS certificates. The format is the same as for `tailscale cert <your-domain>`. It's necessary to set the exact domain under which your home assistant instance is running.
+This option (if set) configures tailscale to provision TLS certificates. The format is the same as for `tailscale cert <your-domain>`. It's necessary to set the exact domain your home assistant instance is running on.
 
 1. Go to [DNS tab](https://login.tailscale.com/admin/dns) in Tailscale's admin page
 2. Choose a **Tailnet name** and click **Enable HTTPS** under HTTPS Certificates
@@ -173,15 +174,15 @@ This option (if set) configures tailscale to provision TLS certificates. The for
 4. Your device should now be reachable under `https://<machine-name>.<tailnet-name>.ts.net` (but with an invalid SSL certificate)
 5. Go to the **Configuration tab** of this add-on and set the above domain (`<machine-name>.<tailnet-name>.ts.net`) at `cert_domain`
 6. Restart the add-on; you should now have two new files under `/ssl`, which you can use to configure any web server.
-7. Visit the above domain again, you should now have a valid SSL certificate (if you encounter strange browser behaviour or strange error messages, try to clear all site-related cookies, clear all browser cache, restart browser)
+7. Visit the above domain again, you should now have a valid SSL certificate (if you encounter strange browser behavior or strange error messages, try to clear all site-related cookies, clear all browser cache, restart browser)
 
 See [Enabling HTTPS](https://tailscale.com/kb/1153/enabling-https/) for more information.
 
 ### Option: `ssh`
 
-This option (if set) advertises that Tailscale is managing SSH connections that originate from the Tailscale network to this host. This allows you to connect to the addon using SSH. Thanks to [Tailscale SSH Console](https://tailscale.com/blog/ssh-console/), you can even connect to the instance directly in the browser.
+This option (if set) indicates that Tailscale is managing SSH connections originating from the Tailscale network to this host. This allows you to connect to the addon using SSH. Thanks to [Tailscale SSH Console](https://tailscale.com/blog/ssh-console/), you can even connect to the instance directly in the browser.
 
-You can get shell access to this addon, then from there, you can connect to the other hosts in your network.
+You can get shell access to this add-on, and from there, you can connect to the other hosts on your network.
 
 See <https://tailscale.com/kb/1193/tailscale-ssh/> for more information.
 
@@ -192,7 +193,7 @@ This option disables `tailscale` from accepting DNS resolvers. It is currently f
 ### Option: `advertise_connector`
 
 This option (if set) configures tailscale to advertise as an _App Connector_.
-See [Secure your SaaS with Tailscale App connectors](https://tailscale.com/blog/saas) for more information on how to utilise this feature.
+See [Secure your SaaS with Tailscale App connectors](https://tailscale.com/blog/saas) for more information on how to utilize this feature.
 
 ## How to connect your Home Assistant App (iOS)
 

@@ -388,7 +388,7 @@
 
 ## 1.24.2.1
 
-- The [S6-Overlay 3.x update](https://developers.home-assistant.io/blog/2022/05/12/s6-overlay-base-images/) caused the container not to start. The `init: false` option was added to the addon's config to remediate.
+- The [S6-Overlay 3.x update](https://developers.home-assistant.io/blog/2022/05/12/s6-overlay-base-images/) caused the container not to start. The `init: false` option was added to the addon's config to address the issue.
 
 ## 1.24.2.0
 
