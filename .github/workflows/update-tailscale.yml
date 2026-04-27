@@ -1,0 +1,110 @@
+name: Update Tailscale Version
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # Daily at 06:00 UTC
+  workflow_dispatch:
+    # Allow manual trigger
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          token: ${{ secrets.PAT_UPDATE }}
+
+      - name: Get latest Tailscale stable version
+        id: latest
+        run: |
+          # Parse the stable package page for the highest amd64 static binary version
+          VERSION=$(
+            curl -sL https://pkgs.tailscale.com/stable/ \
+              | grep -oP 'tailscale_\K\d+\.\d+\.\d+(?=_amd64\.tgz)' \
+              | sort -V \
+              | tail -1
+          )
+          if [ -z "$VERSION" ]; then
+            echo "Failed to detect latest Tailscale version" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Detected latest version: $VERSION"
+
+      - name: Get current version
+        id: current
+        run: |
+          VERSION=$(jq -r '.args.TAILSCALE_VERSION' tailscale/build.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Current version: $VERSION"
+
+      - name: Update files
+        if: steps.latest.outputs.version != steps.current.outputs.version
+        env:
+          NEW: ${{ steps.latest.outputs.version }}
+          OLD: ${{ steps.current.outputs.version }}
+        run: |
+          echo "Updating $OLD → $NEW"
+
+          # Escape dots so sed treats them as literals, not regex wildcards
+          OLD_ESC="${OLD//./\\.}"
+
+          # tailscale/Dockerfile
+          sed -i \
+            "s/ARG TAILSCALE_VERSION=\"${OLD_ESC}\"/ARG TAILSCALE_VERSION=\"${NEW}\"/" \
+            tailscale/Dockerfile
+
+          # tailscale/build.json
+          sed -i \
+            "s/\"TAILSCALE_VERSION\": \"${OLD_ESC}\"/\"TAILSCALE_VERSION\": \"${NEW}\"/" \
+            tailscale/build.json
+
+          # tailscale/config.json  (version has a trailing .0)
+          sed -i \
+            "s/\"version\": \"${OLD_ESC}\.0\"/\"version\": \"${NEW}.0\"/" \
+            tailscale/config.json
+
+          # tailscale/CHANGELOG.md — prepend new entry after the "# Changelog" header
+          awk -v new="$NEW" '
+            /^# Changelog/ {
+              print
+              print ""
+              print "## " new ".0"
+              print ""
+              print "- Tailscale package updated to version `" new "`"
+              print ""
+              next
+            }
+            { print }
+          ' tailscale/CHANGELOG.md > /tmp/CHANGELOG.tmp
+          mv /tmp/CHANGELOG.tmp tailscale/CHANGELOG.md
+
+      - name: Verify changes
+        if: steps.latest.outputs.version != steps.current.outputs.version
+        run: |
+          echo "=== Dockerfile ===" && grep TAILSCALE_VERSION tailscale/Dockerfile
+          echo "=== build.json ===" && cat tailscale/build.json
+          echo "=== config.json (version) ===" && grep '"version"' tailscale/config.json
+          echo "=== CHANGELOG (head) ===" && head -10 tailscale/CHANGELOG.md
+
+      - name: Commit and push
+        if: steps.latest.outputs.version != steps.current.outputs.version
+        env:
+          NEW: ${{ steps.latest.outputs.version }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add \
+            tailscale/CHANGELOG.md \
+            tailscale/Dockerfile \
+            tailscale/build.json \
+            tailscale/config.json
+          git commit -m "chore: update Tailscale version to ${NEW}"
+          git push
+
+      - name: No update needed
+        if: steps.latest.outputs.version == steps.current.outputs.version
+        run: echo "Already on latest Tailscale version (${{
+          steps.current.outputs.version }}), nothing to do."
