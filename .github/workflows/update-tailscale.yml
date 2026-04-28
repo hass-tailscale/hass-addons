@@ -2,7 +2,7 @@ name: Update Tailscale Version
 
 on:
   schedule:
-    - cron: "0 6 * * *" # Daily at 06:00 UTC
+    - cron: "0 */12 * * *" # Bi-daily UTC
   workflow_dispatch:
     # Allow manual trigger
 
@@ -17,21 +17,20 @@ jobs:
           token: ${{ secrets.PAT_UPDATE }}
 
       - name: Get latest Tailscale stable version
-        id: latest
+        id: versions
         run: |
-          # Parse the stable package page for the highest amd64 static binary version
-          VERSION=$(
+          LATEST=$(
             curl -sL https://pkgs.tailscale.com/stable/ \
               | grep -oP 'tailscale_\K\d+\.\d+\.\d+(?=_amd64\.tgz)' \
               | sort -V \
               | tail -1
           )
-          if [ -z "$VERSION" ]; then
-            echo "Failed to detect latest Tailscale version" >&2
+          if [ -z "$LATEST" ]; then
+            echo "Failed to fetch latest Tailscale version" >&2
             exit 1
           fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Detected latest version: $VERSION"
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "Latest version: $LATEST"
 
       - name: Get current version
         id: current
@@ -40,15 +39,39 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Current version: $VERSION"
 
-      - name: Update files
-        if: steps.latest.outputs.version != steps.current.outputs.version
+      - name: Determine target version
+        id: target
         env:
-          NEW: ${{ steps.latest.outputs.version }}
-          OLD: ${{ steps.current.outputs.version }}
+          CURRENT: ${{ steps.current.outputs.version }}
+          LATEST: ${{ steps.versions.outputs.latest }}
         run: |
-          echo "Updating $OLD → $NEW"
+          # Sort the two versions and compare - if latest sorts below current,
+          # the current version was pulled upstream and we need to move back.
+          HIGHER=$(printf '%s\n' "$CURRENT" "$LATEST" | sort -V | tail -1)
+          if [ "$LATEST" = "$CURRENT" ]; then
+            echo "version=$CURRENT" >> "$GITHUB_OUTPUT"
+            echo "mode=noop" >> "$GITHUB_OUTPUT"
+            echo "Target: no change needed"
+          elif [ "$HIGHER" = "$LATEST" ]; then
+            echo "version=$LATEST" >> "$GITHUB_OUTPUT"
+            echo "mode=update" >> "$GITHUB_OUTPUT"
+            echo "Target: update to $LATEST"
+          else
+            # LATEST sorted below CURRENT - upstream pulled the current version
+            echo "version=$LATEST" >> "$GITHUB_OUTPUT"
+            echo "mode=revert" >> "$GITHUB_OUTPUT"
+            echo "WARNING: Current version $CURRENT appears to have been pulled - reverting to $LATEST"
+          fi
 
-          # Escape dots so sed treats them as literals, not regex wildcards
+      - name: Apply version change
+        if: steps.target.outputs.mode != 'noop'
+        env:
+          NEW: ${{ steps.target.outputs.version }}
+          OLD: ${{ steps.current.outputs.version }}
+          MODE: ${{ steps.target.outputs.mode }}
+        run: |
+          echo "$MODE: $OLD → $NEW"
+
           OLD_ESC="${OLD//./\\.}"
 
           # tailscale/Dockerfile
@@ -61,19 +84,25 @@ jobs:
             "s/\"TAILSCALE_VERSION\": \"${OLD_ESC}\"/\"TAILSCALE_VERSION\": \"${NEW}\"/" \
             tailscale/build.json
 
-          # tailscale/config.json  (version has a trailing .0)
+          # tailscale/config.json
           sed -i \
             "s/\"version\": \"${OLD_ESC}\.0\"/\"version\": \"${NEW}.0\"/" \
             tailscale/config.json
 
-          # tailscale/CHANGELOG.md — prepend new entry after the "# Changelog" header
-          awk -v new="$NEW" '
+          # tailscale/CHANGELOG.md
+          if [ "$MODE" = "revert" ]; then
+            CHANGELOG_ENTRY="- Tailscale updated from \`${OLD}\` to \`${NEW}\` - upstream version \`${OLD}\` was pulled"
+          else
+            CHANGELOG_ENTRY="- Tailscale package updated to version \`${NEW}\`"
+          fi
+
+          awk -v new="$NEW" -v entry="$CHANGELOG_ENTRY" '
             /^# Changelog/ {
               print
               print ""
               print "## " new ".0"
               print ""
-              print "- Tailscale package updated to version `" new "`"
+              print entry
               print ""
               next
             }
@@ -82,7 +111,7 @@ jobs:
           mv /tmp/CHANGELOG.tmp tailscale/CHANGELOG.md
 
       - name: Verify changes
-        if: steps.latest.outputs.version != steps.current.outputs.version
+        if: steps.target.outputs.mode != 'noop'
         run: |
           echo "=== Dockerfile ===" && grep TAILSCALE_VERSION tailscale/Dockerfile
           echo "=== build.json ===" && cat tailscale/build.json
@@ -90,9 +119,11 @@ jobs:
           echo "=== CHANGELOG (head) ===" && head -10 tailscale/CHANGELOG.md
 
       - name: Commit and push
-        if: steps.latest.outputs.version != steps.current.outputs.version
+        if: steps.target.outputs.mode != 'noop'
         env:
-          NEW: ${{ steps.latest.outputs.version }}
+          NEW: ${{ steps.target.outputs.version }}
+          OLD: ${{ steps.current.outputs.version }}
+          MODE: ${{ steps.target.outputs.mode }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -101,10 +132,14 @@ jobs:
             tailscale/Dockerfile \
             tailscale/build.json \
             tailscale/config.json
-          git commit -m "chore: update Tailscale version to ${NEW}"
+          if [ "$MODE" = "revert" ]; then
+            git commit -m "chore: update Tailscale version to ${NEW} - upstream version ${OLD} was pulled"
+          else
+            git commit -m "chore: update Tailscale version to ${NEW}"
+          fi
           git push
 
       - name: No update needed
-        if: steps.latest.outputs.version == steps.current.outputs.version
+        if: steps.target.outputs.mode == 'noop'
         run: echo "Already on latest Tailscale version (${{
           steps.current.outputs.version }}), nothing to do."
