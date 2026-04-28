@@ -1,5 +1,5 @@
 name: Feature Request
-description: Suggest a new feature for hass-tailscale.
+description: Suggest a new feature.
 type: "Feature"
 body:
   - type: textarea
