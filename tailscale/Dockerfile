@@ -10,11 +10,9 @@ RUN apt update &&\
     apt install -y wget iptables iproute2 procps iputils-ping &&\
     rm -rf /var/lib/apt/lists/*
 
-# Use legacy iptables not nftables, see https://wiki.debian.org/iptables
 RUN update-alternatives --set iptables /usr/sbin/iptables-legacy
 RUN update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
 
-# Download and install tailscale to /bin from https://pkgs.tailscale.com/stable/#static
 COPY install.sh /
 RUN chmod a+x /install.sh
 RUN /install.sh $BUILD_ARCH $TAILSCALE_VERSION

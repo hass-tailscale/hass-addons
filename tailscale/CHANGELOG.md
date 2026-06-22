@@ -4,26 +4,21 @@
 
 - Tailscale package updated to version `1.98.4`
 
-
 ## 1.98.3.0
 
 - Tailscale package updated to version `1.98.3`
-
 
 ## 1.98.2.0
 
 - Tailscale package updated to version `1.98.2`
 
-
 ## 1.96.4.0
 
 - Tailscale updated from `1.98.1` to `1.96.4` - upstream version `1.98.1` was pulled
 
-
 ## 1.98.1.0
 
 - Tailscale package updated to version `1.98.1`
-
 
 ## 1.96.4.0
 
