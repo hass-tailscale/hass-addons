@@ -1,6 +1,6 @@
 {
   "name": "Tailscale",
-  "version": "1.98.4.0",
+  "version": "1.98.8.0",
   "slug": "tailscale",
   "description": "Secure Connectivity for AI, IoT & Multi-Cloud",
   "url": "https://github.com/hass-tailscale/hass-addons/tree/main/tailscale",
