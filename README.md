@@ -23,6 +23,6 @@ See ["Create an add-on repository"](https://developers.home-assistant.io/docs/ad
 
 ## Updates
 
-GitHub Actions automatically build and publish new versions of the add-ons when a new Tailscale release is made. The add-on's version number will be bumped or reverted to match the current stable Tailscale version number.
+A scheduled GitHub Actions workflow checks for new stable Tailscale releases and commits a version bump when one is published. Home Assistant then offers the update, and the add-on is built on your device when you install it.
 
 [supervisor-badge]: https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg
