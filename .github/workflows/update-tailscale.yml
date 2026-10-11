@@ -2,7 +2,7 @@ name: Update Tailscale Version
 
 on:
   schedule:
-    - cron: "0 */12 * * *" # Bi-daily UTC
+    - cron: "0 */12 * * *"
   workflow_dispatch:
     # Allow manual trigger
 
@@ -87,10 +87,11 @@ jobs:
             "s/\"TAILSCALE_VERSION\": \"${OLD_ESC}\"/\"TAILSCALE_VERSION\": \"${NEW}\"/" \
             tailscale/build.json
 
-          # tailscale/config.json
-          sed -i \
-            "s/\"version\": \"${OLD_ESC}\.0\"/\"version\": \"${NEW}.0\"/" \
-            tailscale/config.json
+          # tailscale/config.json - set outright with jq so a patch-level
+          # add-on version (e.g. x.y.z.1) is replaced too
+          jq --arg v "${NEW}.0" '.version = $v' tailscale/config.json \
+            > /tmp/config.json.tmp
+          mv /tmp/config.json.tmp tailscale/config.json
 
           # tailscale/CHANGELOG.md
           if [ "$MODE" = "revert" ]; then
@@ -115,7 +116,18 @@ jobs:
 
       - name: Verify changes
         if: steps.target.outputs.mode != 'noop'
+        env:
+          NEW: ${{ steps.target.outputs.version }}
         run: |
+          fail=0
+          grep -qF "ARG TAILSCALE_VERSION=\"${NEW}\"" tailscale/Dockerfile \
+            || { echo "::error::Dockerfile not updated"; fail=1; }
+          [ "$(jq -r '.args.TAILSCALE_VERSION' tailscale/build.json)" = "$NEW" ] \
+            || { echo "::error::build.json not updated"; fail=1; }
+          [ "$(jq -r '.version' tailscale/config.json)" = "${NEW}.0" ] \
+            || { echo "::error::config.json not updated"; fail=1; }
+          [ "$fail" -eq 0 ] || exit 1
+
           echo "=== Dockerfile ===" && grep TAILSCALE_VERSION tailscale/Dockerfile
           echo "=== build.json ===" && cat tailscale/build.json
           echo "=== config.json (version) ===" && grep '"version"' tailscale/config.json

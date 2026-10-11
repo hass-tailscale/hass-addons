@@ -1,49 +1,49 @@
 # Changelog
 
+## 1.104.1.1
+
+- Fixes the `login_server` option, which was passed to Tailscale with a stray trailing space and rejected
+- Fixes the `port` option, which was passed to `tailscaled` with a stray comma and stopped it from starting
+- Fixes the startup wait giving up after ~15 seconds instead of 60
+- Option values containing spaces are no longer split into separate arguments
+- TLS certificates (`cert_domain`) are now requested after Tailscale connects, so first-time setup no longer fails, and are checked for renewal daily
+- The add-on now shuts down `tailscaled` cleanly when stopped
+
 ## 1.104.1.0
 
 - Tailscale package updated to version `1.104.1`
-
 
 ## 1.102.5.0
 
 - Tailscale package updated to version `1.102.5`
 
-
 ## 1.102.4.0
 
 - Tailscale package updated to version `1.102.4`
-
 
 ## 1.102.3.0
 
 - Tailscale package updated to version `1.102.3`
 
-
 ## 1.102.2.0
 
 - Tailscale package updated to version `1.102.2`
-
 
 ## 1.102.1.0
 
 - Tailscale package updated to version `1.102.1`
 
-
 ## 1.98.10.0
 
 - Tailscale package updated to version `1.98.10`
-
 
 ## 1.98.9.0
 
 - Tailscale package updated to version `1.98.9`
 
-
 ## 1.98.8.0
 
 - Tailscale package updated to version `1.98.8`
-
 
 ## 1.98.4.0
 
