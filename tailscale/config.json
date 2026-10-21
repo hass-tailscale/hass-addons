@@ -1,20 +1,32 @@
 {
   "name": "Tailscale",
-  "version": "1.104.1.1",
+  "version": "1.104.2.0",
   "slug": "tailscale",
   "description": "Secure Connectivity for AI, IoT & Multi-Cloud",
   "url": "https://github.com/hass-tailscale/hass-addons/tree/main/tailscale",
-  "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
+  "arch": [
+    "armhf",
+    "armv7",
+    "aarch64",
+    "amd64",
+    "i386"
+  ],
   "startup": "application",
   "boot": "auto",
   "host_network": true,
-  "privileged": ["NET_ADMIN"],
-  "devices": ["/dev/net/tun"],
+  "privileged": [
+    "NET_ADMIN"
+  ],
+  "devices": [
+    "/dev/net/tun"
+  ],
   "options": {
     "hostname": "homeassistant",
     "userspace_networking": true
   },
-  "map": ["ssl:rw"],
+  "map": [
+    "ssl:rw"
+  ],
   "schema": {
     "advertise_routes": "str?",
     "advertise_exit_node": "bool?",

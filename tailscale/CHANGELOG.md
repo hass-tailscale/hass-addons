@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.104.2.0
+
+- Tailscale package updated to version `1.104.2`
+
+
 ## 1.104.1.1
 
 - Fixes the `login_server` option, which was passed to Tailscale with a stray trailing space and rejected
