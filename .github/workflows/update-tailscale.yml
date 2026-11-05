@@ -9,6 +9,14 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+concurrency:
+  group: update-tailscale
+  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-slim
@@ -17,17 +25,17 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Get latest Tailscale stable version
         id: versions
         run: |
           LATEST=$(
-            curl -sL https://pkgs.tailscale.com/stable/ \
+            curl -fsSL --retry 3 https://pkgs.tailscale.com/stable/ \
               | grep -oP 'tailscale_\K\d+\.\d+\.\d+(?=_amd64\.tgz)' \
               | sort -V \
               | tail -1
-          )
+          ) || true
           if [ -z "$LATEST" ]; then
             echo "Failed to fetch latest Tailscale version" >&2
             exit 1
@@ -60,7 +68,14 @@ jobs:
             echo "mode=update" >> "$GITHUB_OUTPUT"
             echo "Target: update to $LATEST"
           else
-            # LATEST sorted below CURRENT - upstream pulled the current version
+            # LATEST sorted below CURRENT. Only move back if the current version's
+            # package is really gone, so a partial or cached listing can't downgrade us.
+            URL="https://pkgs.tailscale.com/stable/tailscale_${CURRENT}_amd64.tgz"
+            STATUS=$(curl -sIL --retry 3 -o /dev/null -w '%{http_code}' "$URL" || true)
+            if [ "$STATUS" != "404" ]; then
+              echo "::error::Listing shows $LATEST below current $CURRENT, but $URL returned HTTP $STATUS (not 404). Refusing to downgrade."
+              exit 1
+            fi
             echo "version=$LATEST" >> "$GITHUB_OUTPUT"
             echo "mode=revert" >> "$GITHUB_OUTPUT"
             echo "WARNING: Current version $CURRENT appears to have been pulled - reverting to $LATEST"
@@ -141,7 +156,7 @@ jobs:
           MODE: ${{ steps.target.outputs.mode }}
         run: |
           git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
             tailscale/CHANGELOG.md \
             tailscale/Dockerfile \
@@ -152,9 +167,24 @@ jobs:
           else
             git commit -m "chore: update Tailscale version to ${NEW}"
           fi
-          git push
+
+          # Rebase onto anything that landed meanwhile, retry on failure.
+          for attempt in 1 2 3 4 5; do
+            # Shallow checkout: fetch enough history to rebase onto anything new.
+            if git fetch --depth=50 origin "$GITHUB_REF_NAME" && git rebase FETCH_HEAD && git push origin "HEAD:$GITHUB_REF_NAME"; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            echo "Push attempt $attempt failed, retrying..."
+            sleep $((attempt * 15))
+          done
+
+          echo "::error::Push failed after 5 attempts."
+          exit 1
 
       - name: No update needed
         if: steps.target.outputs.mode == 'noop'
-        run: echo "Already on latest Tailscale version (${{
-          steps.current.outputs.version }}), nothing to do."
+        env:
+          CURRENT: ${{ steps.current.outputs.version }}
+        run: echo "Already on latest Tailscale version ($CURRENT), nothing to do."
